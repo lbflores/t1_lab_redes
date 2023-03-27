@@ -28,7 +28,7 @@ DNS = Acessar qualquer site
 #include <netinet/in_systm.h> //tipos de dados
 
 #define BUFFSIZE 1518
-#define TOTAL_PACOTES 100  // numero de pacotes a serem capturados
+#define TOTAL_PACOTES 3000  // numero de pacotes a serem capturados
 
 // Atencao!! Confira no /usr/include do seu sisop o nome correto
 // das estruturas de dados dos protocolos.
@@ -153,7 +153,6 @@ void adicionaListaUDP(char str[],  portaUDP portasUDP[]){
 	}
 }
 
-
 void exibe5maioresTCP(portaTCP portasTCP[], int tamanho){
     for (int i = 0; i < TOTAL_PACOTES; i++){
         for (int j = i; j < TOTAL_PACOTES; j++){
@@ -169,7 +168,7 @@ void exibe5maioresTCP(portaTCP portasTCP[], int tamanho){
         }
     }
 	for(int i = 0; i < 5; i++){
-		printf("Porta: %s Quantidade de acessos: %d \n", portasTCP[i].porta, portasTCP[i].quantAcesso);
+		printf("			Porta: %s Quantidade de acessos: %d \n", portasTCP[i].porta, portasTCP[i].quantAcesso);
 	}
 }
 
@@ -188,7 +187,7 @@ void exibe5maioresUDP(portaUDP portasUDP[], int tamanho){
         }
     }
 	for(int i = 0; i < 5; i++){
-		printf("Porta: %s Quantidade de acessos: %d \n", portasUDP[i].porta, portasUDP[i].quantAcesso);
+		printf("			Porta: %s Quantidade de acessos: %d \n", portasUDP[i].porta, portasUDP[i].quantAcesso);
 	}
 }
 
@@ -235,6 +234,10 @@ int main(int argc,char *argv[])
 	int tamPacote = 0;
 	portaTCP portasTCP [TOTAL_PACOTES];
 	portaUDP portasUDP [TOTAL_PACOTES];
+
+	//outro protocolo de aplicação
+	int https = 0;
+
 
 	// inicializa vetor de portas TCP
 	for(int i = 0; i < TOTAL_PACOTES; i++){
@@ -309,6 +312,23 @@ int main(int argc,char *argv[])
 				adicionaListaUDP(str, portasUDP);
 				
 			}
+
+			//se HTTP Porta 80
+			if(buff1[34]== 0x00 && buff1[35]== 0x50){
+				http++;
+			}
+			//se HTTPS Porta 443
+			if(buff1[34]== 0x01 && buff1[35]== 0xbb){
+				https++;
+			}
+			//se DNS Porta 53
+			if(buff1[34]== 0x00 && buff1[35]== 0x35){
+				dns++;
+			}
+			//se DHCP Porta 67
+			if(buff1[34]== 0x00 && buff1[35]== 0x43){
+				dhcp++;
+			}
 			//se ICMPv4
 			if(buff1[23]== 0x01){
 				icmp++;
@@ -360,6 +380,22 @@ int main(int argc,char *argv[])
 				adicionaListaUDP(str, portasUDP);
 				
 			}
+			//se HTTP Porta 80
+			if(buff1[54]== 0x00 && buff1[55]== 0x50){
+				http++;
+			}
+			//se HTTPS Porta 443
+			if(buff1[54]== 0x01 && buff1[55]== 0xbb){
+				https++;
+			}
+			//se DNS Porta 53
+			if(buff1[54]== 0x00 && buff1[55]== 0x35){
+				dns++;
+			}
+			//se DHCP Porta 67
+			if(buff1[54]== 0x00 && buff1[55]== 0x43){
+				dhcp++;
+			}
 			//se ICMPv6
 			if(buff1[20]== 0x3a){
 				icmpv6++;
@@ -379,22 +415,31 @@ int main(int argc,char *argv[])
 		
 	printf("Geração de estatísticas: \n");
 	printf("- Geral: \n");
-	printf("	- Apresentar min/max/média do tamanho dos pacotes recebidos: %d / %d/ %f \n", min, max, media);
+	printf("	- Apresentar min/max/média do tamanho dos pacotes recebidos: %d / %d/ %f  \n", min, max, media);
 
 	printf("- Nível de Enlace: \n");
-	printf("	- Quantidade e porcentagem de ARP Requests e ARP Reply: %d	%d \n", arpRequest, arpReply);
+	printf("	- Quantidade e porcentagem de ARP Requests e ARP Reply: \n");
+	printf("		- ARP Requests %d 	%.2f%c \n", arpRequest, (float)(arpRequest*100)/TOTAL_PACOTES, '%');
+	printf("		- ARP Reply %d 	%.2f%c \n\n", arpReply, (float)(arpReply*100)/TOTAL_PACOTES, '%');
 
 	printf("- Nível de Rede: \n");
-	printf("	- Quantidade e porcentagem de pacotes IPv4: %d	%.0f%c \n", ipv4, (float)(ipv4*100)/TOTAL_PACOTES, '%');
-	printf("	- Quantidade e porcentagem de pacotes ICMP: %d	%.0f%c \n", icmp, (float)(icmp*100)/TOTAL_PACOTES, '%');
-	printf(" 	- Quantidade e porcentagem de ICMP Echo Request e ICMP Echo Reply: %d  %d \n", icmpEchoRequest, icmpEchoReply);
-	printf("	- Quantidade e porcentagem de pacotes IPv6: %d %.0f%c \n", ipv6, (float)(ipv6*100)/TOTAL_PACOTES, '%');
-	printf("	- Quantidade e porcentagem de pacotes ICMPv6: %d %.0f%c \n", icmpv6, (float)(icmpv6*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de ICMPv6 Echo Request e ICMPv6 Echo Reply: %d  %d \n", icmpv6EchoRequest, icmpv6EchoReply);
+	printf("	- Quantidade e porcentagem de pacotes IPv4: %d	%.2f%c \n", ipv4, (float)(ipv4*100)/TOTAL_PACOTES, '%');
+	printf("	- Quantidade e porcentagem de pacotes ICMP: %d	%.2f%c \n", icmp, (float)(icmp*100)/TOTAL_PACOTES, '%');
+
+	printf(" 	- Quantidade e porcentagem de ICMP Echo Request e ICMP Echo Reply:\n");
+	printf("		- ICMP Echo Request %d 	%.2f%c  \n", icmpEchoRequest, (float)(icmpEchoRequest*100)/TOTAL_PACOTES, '%');
+	printf("		- ICMP Echo Reply %d 	%.2f%c  \n\n", icmpEchoReply, (float)(icmpEchoReply*100)/TOTAL_PACOTES, '%');
+
+	printf("	- Quantidade e porcentagem de pacotes IPv6: %d 	%.2f%c \n", ipv6, (float)(ipv6*100)/TOTAL_PACOTES, '%');
+	printf("	- Quantidade e porcentagem de pacotes ICMPv6: %d 	%.2f%c \n", icmpv6, (float)(icmpv6*100)/TOTAL_PACOTES,'%');
+
+	printf("	- Quantidade e porcentagem de ICMPv6 Echo Request e ICMPv6 Echo Reply:\n");
+	printf("		- ICMPv6 Echo Request %d 	%.2f%c  \n", icmpv6EchoRequest, (float)(icmpv6EchoRequest*100)/TOTAL_PACOTES, '%');
+	printf("		- ICMPv6 Echo Reply %d 	%.2f%c  \n\n", icmpv6EchoReply, (float)(icmpv6EchoReply*100)/TOTAL_PACOTES, '%');
 		
 	printf("- Nível de Transporte: \n");
-	printf("	- Quantidade e porcentagem de pacotes UDP: %d %.0f%c \n", udp, (float)(udp*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de pacotes TCP: %d %.0f%c \n", tcp, (float)(tcp*100)/TOTAL_PACOTES,'%');
+	printf("	- Quantidade e porcentagem de pacotes UDP: %d 	%.2f%c \n", udp, (float)(udp*100)/TOTAL_PACOTES,'%');
+	printf("	- Quantidade e porcentagem de pacotes TCP: %d 	%.2f%c \n", tcp, (float)(tcp*100)/TOTAL_PACOTES,'%');
 
 	
 	printf("	- Lista com as 5 portas TCP mais acessadas: \n");
@@ -402,10 +447,10 @@ int main(int argc,char *argv[])
 	printf("	- Lista com as 5 portas UDP mais acessadas: \n");
 	exibe5maioresUDP(portasUDP, TOTAL_PACOTES);
 
-	printf ("- Nível de Aplicação: \n");
-	printf("	- Quantidade e porcentagem de pacotes HTTP: %d  %.0f%c \n", http, (float)(http*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de pacotes DNS: %d  %.0f%c \n", dns, (float)(dns*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de pacotes DHCP: %d  %.0f%c \n", dhcp, (float)(dhcp*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem para outro protocolo de aplicação qualquer: %d  %.0f%c \n", outro, (float)(outro*100)/TOTAL_PACOTES,'%');
+	printf ("\n- Nível de Aplicação: \n");
+	printf("	- Quantidade e porcentagem de pacotes HTTP: %d  %.2f%c \n", http, (float)(http*100)/TOTAL_PACOTES,'%');
+	printf("	- Quantidade e porcentagem de pacotes DNS: %d  %.2f%c \n", dns, (float)(dns*100)/TOTAL_PACOTES,'%');
+	printf("	- Quantidade e porcentagem de pacotes DHCP: %d  %.2f%c \n", dhcp, (float)(dhcp*100)/TOTAL_PACOTES,'%');
+	printf("	- Quantidade e porcentagem para outro protocolo de aplicação qualquer: %d  %.2f%c \n", https, (float)(https*100)/TOTAL_PACOTES,'%');
 		
 }
