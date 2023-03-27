@@ -1,14 +1,3 @@
-/*-------------------------------------------------------------*/
-/* Exemplo Socket Raw - Captura pacotes recebidos na interface */
-/*-------------------------------------------------------------*/
-
-/*
-
-IPV6 / ICMPV6 = ping 8.8.8.8
-DNS = Acessar qualquer site
-
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -16,15 +5,15 @@ DNS = Acessar qualquer site
 #include <sys/ioctl.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
+#include <limits.h>
 
 /* Diretorios: net, netinet, linux contem os includes que descrevem */
 /* as estruturas de dados do header dos protocolos   	  	        */
-
 #include <net/if.h>  //estrutura ifr
 #include <netinet/ether.h> //header ethernet
 #include <netinet/in.h> //definicao de protocolos
 #include <arpa/inet.h> //funcoes para manipulacao de enderecos IP
-
 #include <netinet/in_systm.h> //tipos de dados
 
 #define BUFFSIZE 1518
@@ -32,9 +21,7 @@ DNS = Acessar qualquer site
 
 // Atencao!! Confira no /usr/include do seu sisop o nome correto
 // das estruturas de dados dos protocolos.
-
 unsigned char buff1[BUFFSIZE]; // buffer de recepcao
-
 int sockd;
 int on;
 struct ifreq ifr;
@@ -44,7 +31,6 @@ typedef struct {
 	char porta[4];
 	int quantAcesso;
 }portaTCP, portaUDP;
-
 
 //- Lista com as 5 portas TCP mais acessadas
 void adicionaListaTCP(char str[],  portaTCP portasTCP[]){
@@ -191,6 +177,17 @@ void exibe5maioresUDP(portaUDP portasUDP[], int tamanho){
 	}
 }
 
+float calculatePercentage(float value, int total) {
+    float percentage = (value / total) * 100;
+    return percentage;
+}
+
+int hexToDecimal(char port[4]) {
+    int decimalValue;
+    sscanf(port, "%x", &decimalValue);
+    return decimalValue;
+}
+
 int main(int argc,char *argv[])
 {
     /* Criacao do socket. Todos os pacotes devem ser construidos a partir do protocolo Ethernet. */
@@ -211,9 +208,10 @@ int main(int argc,char *argv[])
 
 	//Variáveis para estatísticas
 	int count = 0;
-	int min = 0;
-	int max = 0;
-	float media = 0;
+	int smallestPacketSize = INT_MAX;
+	int largestPacketSize = 0;
+	float averagePacketSize = 0;
+	int totalPacketsReceivedSize = 0;
 	int arpRequest = 0;
 	int arpReply = 0;
 	int ipv4 = 0;	
@@ -227,6 +225,7 @@ int main(int argc,char *argv[])
 	int udp = 0;
 	int tcp = 0;
 	int http = 0;
+	int https = 0;
 	int dns = 0;
 	int ftp = 0;
 	int dhcp = 0;
@@ -234,10 +233,6 @@ int main(int argc,char *argv[])
 	int tamPacote = 0;
 	portaTCP portasTCP [TOTAL_PACOTES];
 	portaUDP portasUDP [TOTAL_PACOTES];
-
-	//outro protocolo de aplicação
-	int https = 0;
-
 
 	// inicializa vetor de portas TCP
 	for(int i = 0; i < TOTAL_PACOTES; i++){
@@ -253,12 +248,21 @@ int main(int argc,char *argv[])
 	// recepcao de pacotes
 	while (count < TOTAL_PACOTES) {
    		tamPacote = recv(sockd,(char *) &buff1, sizeof(buff1), 0x0);
+		totalPacketsReceivedSize += tamPacote;
+		count++;
+
+		// Maior e Menor pacote
+		if(tamPacote > largestPacketSize){
+			largestPacketSize = tamPacote;
+		}
+		if(tamPacote < smallestPacketSize){
+			smallestPacketSize = tamPacote;
+		}
 		// impress�o do conteudo - exemplo Endereco Destino e Endereco Origem
 		//printf("0- %x : 1- %x : 2- %x : 3- %x : 4- %x : 5- %x \n", buff1[0],buff1[1],buff1[2],buff1[3],buff1[4],buff1[5]);
 		//printf("6- %x : 7- %x : 8- %x : 9- %x: 10- %x: 11- %x \n\n", buff1[6],buff1[7],buff1[8],buff1[9],buff1[10],buff1[11]);
 		printf("Protocolo: %x  %x  \n", buff1[12],buff1[13]);
 		//printf("tamanho pacote- %d\n", tamPacote);
-		count++;
 
 		//lógica de verificação MAC
 		//se ARP
@@ -280,6 +284,12 @@ int main(int argc,char *argv[])
 			char aux2[4];
 			//printf("IPV4 23- %x \n", buff1[23]);
 			ipv4++;
+
+			// HTTPS - 443 || (01BB)
+			if(buff1[34] == 0x01 && buff1[35] == 0xbb){
+				https++;
+			}
+
 			//se TCP
 			if(buff1[23]== 0x06){		
 				memset(str, 0, sizeof(str));
@@ -317,10 +327,6 @@ int main(int argc,char *argv[])
 			if(buff1[34]== 0x00 && buff1[35]== 0x50){
 				http++;
 			}
-			//se HTTPS Porta 443
-			if(buff1[34]== 0x01 && buff1[35]== 0xbb){
-				https++;
-			}
 			//se DNS Porta 53
 			if(buff1[34]== 0x00 && buff1[35]== 0x35){
 				dns++;
@@ -348,6 +354,11 @@ int main(int argc,char *argv[])
 			char aux2[4];
 			//printf("IPV6 20- %x \n", buff1[20]);
 			ipv6++;
+
+			// HTTPS - 443 || (01BB)
+			if(buff1[34] == 0x01 && buff1[35] == 0xbb){
+				https++;
+			}
 			//se TCP
 			if(buff1[20]== 0x06){
 				memset(str, 0, sizeof(str));
@@ -384,10 +395,6 @@ int main(int argc,char *argv[])
 			if(buff1[54]== 0x00 && buff1[55]== 0x50){
 				http++;
 			}
-			//se HTTPS Porta 443
-			if(buff1[54]== 0x01 && buff1[55]== 0xbb){
-				https++;
-			}
 			//se DNS Porta 53
 			if(buff1[54]== 0x00 && buff1[55]== 0x35){
 				dns++;
@@ -407,50 +414,71 @@ int main(int argc,char *argv[])
 				}
 			}
 		}	
-		//printf("%d\n", count);
-		
 	}
-	printf("\n<<<<< FIM DA CAPTURA >>>>>\n");
-	//limite para impressão da estatística
-		
-	printf("Geração de estatísticas: \n");
-	printf("- Geral: \n");
-	printf("	- Apresentar min/max/média do tamanho dos pacotes recebidos: %d / %d/ %f  \n", min, max, media);
 
-	printf("- Nível de Enlace: \n");
-	printf("	- Quantidade e porcentagem de ARP Requests e ARP Reply: \n");
-	printf("		- ARP Requests %d 	%.2f%c \n", arpRequest, (float)(arpRequest*100)/TOTAL_PACOTES, '%');
-	printf("		- ARP Reply %d 	%.2f%c \n\n", arpReply, (float)(arpReply*100)/TOTAL_PACOTES, '%');
+	averagePacketSize = totalPacketsReceivedSize / TOTAL_PACOTES;
 
-	printf("- Nível de Rede: \n");
-	printf("	- Quantidade e porcentagem de pacotes IPv4: %d	%.2f%c \n", ipv4, (float)(ipv4*100)/TOTAL_PACOTES, '%');
-	printf("	- Quantidade e porcentagem de pacotes ICMP: %d	%.2f%c \n", icmp, (float)(icmp*100)/TOTAL_PACOTES, '%');
 
-	printf(" 	- Quantidade e porcentagem de ICMP Echo Request e ICMP Echo Reply:\n");
-	printf("		- ICMP Echo Request %d 	%.2f%c  \n", icmpEchoRequest, (float)(icmpEchoRequest*100)/TOTAL_PACOTES, '%');
-	printf("		- ICMP Echo Reply %d 	%.2f%c  \n\n", icmpEchoReply, (float)(icmpEchoReply*100)/TOTAL_PACOTES, '%');
+	printf("\n<<<<< FIM DA CAPTURA >>>>>\n\n\n");
+	// Print table
+	printf("===== Packets Stats =====\n");
+	printf("Min %d\n", smallestPacketSize);
+	printf("Max %d\n", largestPacketSize);
+	printf("AVG %.2f\n", averagePacketSize);
 
-	printf("	- Quantidade e porcentagem de pacotes IPv6: %d 	%.2f%c \n", ipv6, (float)(ipv6*100)/TOTAL_PACOTES, '%');
-	printf("	- Quantidade e porcentagem de pacotes ICMPv6: %d 	%.2f%c \n", icmpv6, (float)(icmpv6*100)/TOTAL_PACOTES,'%');
+	printf("\n\n\n");
 
-	printf("	- Quantidade e porcentagem de ICMPv6 Echo Request e ICMPv6 Echo Reply:\n");
-	printf("		- ICMPv6 Echo Request %d 	%.2f%c  \n", icmpv6EchoRequest, (float)(icmpv6EchoRequest*100)/TOTAL_PACOTES, '%');
-	printf("		- ICMPv6 Echo Reply %d 	%.2f%c  \n\n", icmpv6EchoReply, (float)(icmpv6EchoReply*100)/TOTAL_PACOTES, '%');
-		
-	printf("- Nível de Transporte: \n");
-	printf("	- Quantidade e porcentagem de pacotes UDP: %d 	%.2f%c \n", udp, (float)(udp*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de pacotes TCP: %d 	%.2f%c \n", tcp, (float)(tcp*100)/TOTAL_PACOTES,'%');
+	printf("%-25s%-16d%-21d\n", "Protocolo", " Nro de pacotes", "  % do total");
+	printf("%-25s%-16d%-21.2f\n", "ARP Request", arpRequest, calculatePercentage((float)arpRequest, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ARP Reply", arpReply, calculatePercentage((float)arpReply, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "IPv4", ipv4, calculatePercentage((float)ipv4, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ICMP", icmp, calculatePercentage((float)icmp, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ICMP Echo Request", icmpEchoRequest, calculatePercentage((float)icmpEchoRequest, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ICMP Echo Reply", icmpEchoReply, calculatePercentage((float)icmpv6EchoReply, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "IPv6", ipv6, calculatePercentage((float)ipv6, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ICMPv6", icmpv6, calculatePercentage((float)icmpv6, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ICMPv6 Echo Request", icmpv6EchoRequest, calculatePercentage((float)icmpv6EchoRequest, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "ICMPv6 Echo Reply", icmpv6EchoReply, calculatePercentage((float)icmpv6EchoReply, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "UDP", udp, calculatePercentage((float)udp, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "TCP", tcp, calculatePercentage((float)tcp, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "HTTP", http, calculatePercentage((float)http, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "HTTPS", https, calculatePercentage((float)https, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "DNS", dns, calculatePercentage((float)dns, TOTAL_PACOTES));
+	printf("%-25s%-16d%-21.2f\n", "DHCP", dhcp, calculatePercentage((float)dhcp, TOTAL_PACOTES));
 
-	
-	printf("	- Lista com as 5 portas TCP mais acessadas: \n");
+	printf("\n\n\n");
+
+	printf("- Lista com as 5 portas TCP mais acessadas: \n");
 	exibe5maioresTCP(portasTCP, TOTAL_PACOTES);
-	printf("	- Lista com as 5 portas UDP mais acessadas: \n");
+	printf("- Lista com as 5 portas UDP mais acessadas: \n");
 	exibe5maioresUDP(portasUDP, TOTAL_PACOTES);
 
-	printf ("\n- Nível de Aplicação: \n");
-	printf("	- Quantidade e porcentagem de pacotes HTTP: %d  %.2f%c \n", http, (float)(http*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de pacotes DNS: %d  %.2f%c \n", dns, (float)(dns*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem de pacotes DHCP: %d  %.2f%c \n", dhcp, (float)(dhcp*100)/TOTAL_PACOTES,'%');
-	printf("	- Quantidade e porcentagem para outro protocolo de aplicação qualquer: %d  %.2f%c \n", https, (float)(https*100)/TOTAL_PACOTES,'%');
+	// printf("Geração de estatísticas: \n");
+	// printf(" - Nível de Enlace: \n");
+	// printf("	- Quantidade e porcentagem de ARP Requests e ARP Reply: \n");
+	// printf("	- ARP Requests %d 	%.2f%c \n", arpRequest, (float)(arpRequest*100)/TOTAL_PACOTES, '%');
+	// printf("	- ARP Reply %d 	%.2f%c \n\n", arpReply, (float)(arpReply*100)/TOTAL_PACOTES, '%');
+
+	// printf(" - Nível de Rede: \n");
+	// printf("	- Quantidade e porcentagem de pacotes IPv4: %d	%.2f%c \n", ipv4, (float)(ipv4*100)/TOTAL_PACOTES, '%');
+	// printf("	- Quantidade e porcentagem de pacotes ICMP: %d	%.2f%c \n", icmp, (float)(icmp*100)/TOTAL_PACOTES, '%');
+	// printf(" - Quantidade e porcentagem de ICMP Echo Request e ICMP Echo Reply:\n");
+	// printf("	- ICMP Echo Request %d 	%.2f%c  \n", icmpEchoRequest, (float)(icmpEchoRequest*100)/TOTAL_PACOTES, '%');
+	// printf("	- ICMP Echo Reply %d 	%.2f%c  \n\n", icmpEchoReply, (float)(icmpEchoReply*100)/TOTAL_PACOTES, '%');
+	// printf("	- Quantidade e porcentagem de pacotes IPv6: %d 	%.2f%c \n", ipv6, (float)(ipv6*100)/TOTAL_PACOTES, '%');
+	// printf("	- Quantidade e porcentagem de pacotes ICMPv6: %d 	%.2f%c \n", icmpv6, (float)(icmpv6*100)/TOTAL_PACOTES,'%')
+	// printf("	- Quantidade e porcentagem de ICMPv6 Echo Request e ICMPv6 Echo Reply:\n");
+	// printf("	- ICMPv6 Echo Request %d 	%.2f%c  \n", icmpv6EchoRequest, (float)(icmpv6EchoRequest*100)/TOTAL_PACOTES, '%');
+	// printf("	- ICMPv6 Echo Reply %d 	%.2f%c  \n\n", icmpv6EchoReply, (float)(icmpv6EchoReply*100)/TOTAL_PACOTES, '%');
+		
+	// printf("- Nível de Transporte: \n");
+	// printf("	- Quantidade e porcentagem de pacotes UDP: %d 	%.2f%c \n", udp, (float)(udp*100)/TOTAL_PACOTES,'%');
+	// printf("	- Quantidade e porcentagem de pacotes TCP: %d 	%.2f%c \n", tcp, (float)(tcp*100)/TOTAL_PACOTES,'%');
+
+	// printf ("\n- Nível de Aplicação: \n");
+	// printf("	- Quantidade e porcentagem de pacotes HTTP: %d  %.2f%c \n", http, (float)(http*100)/TOTAL_PACOTES,'%');
+	// printf("	- Quantidade e porcentagem de pacotes DNS: %d  %.2f%c \n", dns, (float)(dns*100)/TOTAL_PACOTES,'%');
+	// printf("	- Quantidade e porcentagem de pacotes DHCP: %d  %.2f%c \n", dhcp, (float)(dhcp*100)/TOTAL_PACOTES,'%');
+	// printf("	- Quantidade e porcentagem para outro protocolo de aplicação qualquer: %d  %.2f%c \n", https, (float)(https*100)/TOTAL_PACOTES,'%');
 		
 }
