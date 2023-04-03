@@ -17,7 +17,7 @@
 #include <netinet/in_systm.h> //tipos de dados
 
 #define BUFFSIZE 1518
-#define TOTAL_PACOTES 3000  // numero de pacotes a serem capturados
+#define TOTAL_PACOTES 3000 // numero de pacotes a serem capturados
 
 // Atencao!! Confira no /usr/include do seu sisop o nome correto
 // das estruturas de dados dos protocolos.
@@ -38,7 +38,7 @@ void adicionaListaTCP(char str[],  portaTCP portasTCP[]){
 	int adicionou = 0;
 	int compara;
 	for(i=0; i<TOTAL_PACOTES; i++){
-		char aux[512];
+		char aux[4];
 		memset(aux, 0, sizeof(aux));
 		sprintf(aux, "%d", portasTCP[i].quantAcesso);
 
@@ -46,15 +46,13 @@ void adicionaListaTCP(char str[],  portaTCP portasTCP[]){
 		if(portasTCP[0].quantAcesso == 0){
 			strcpy(portasTCP[i].porta, str);
 			portasTCP[i].quantAcesso = 1;
-			//printf("porta: %s\n", portasTCP[i].porta);
-			//printf("quantAcesso: %d\n", portasTCP[i].quantAcesso);
 			printf("----------------------\n");
 			adicionou = 1;
 			break;
 		}
 		//tentativa de fazer a comparação entre o elemento que já está na lista e o que está sendo adicionado
-		char var1[512];
-		char var2[512];
+		char var1[4];
+		char var2[4];
 		memset(var1, 0, sizeof(var1));
 		memset(var2, 0, sizeof(var2));
 		strcpy(var1, portasTCP[i].porta);
@@ -76,8 +74,6 @@ void adicionaListaTCP(char str[],  portaTCP portasTCP[]){
 			if(portasTCP[i].quantAcesso == 0){
 				strcpy(portasTCP[i].porta, str);
 				portasTCP[i].quantAcesso = 1;
-				//printf("porta: %s\n", portasTCP[i].porta);
-				//printf("quantAcesso: %d\n", portasTCP[i].quantAcesso);
 				printf("----------------------\n");
 				break;
 			}
@@ -91,13 +87,11 @@ void adicionaListaUDP(char str[],  portaUDP portasUDP[]){
 	int adicionou = 0;
 	int compara;
 	for(i=0; i<TOTAL_PACOTES; i++){
-		char aux[512];
+		char aux[4];
 		memset(aux, 0, sizeof(aux));	
-		//printf("aux: %s\n", aux);
-		//printf("portasUDP[i].quantAcesso: %d\n", portasUDP[i].quantAcesso);
-		//printf("str: %s\n", str);
+
 		sprintf(aux, "%d", portasUDP[i].quantAcesso);
-		//printf("aux: %s\n", aux);
+
 
 		// se lista na posião 0 está vazia, adiciona no inicio
 		if(portasUDP[0].quantAcesso == 0){
@@ -108,8 +102,8 @@ void adicionaListaUDP(char str[],  portaUDP portasUDP[]){
 			break;
 		}
 		//tentativa de fazer a comparação entre o elemento que já está na lista e o que está sendo adicionado
-		char var1[512];
-		char var2[512];
+		char var1[4];
+		char var2[4];
 		memset(var1, 0, sizeof(var1));
 		memset(var2, 0, sizeof(var2));
 		strcpy(var1, portasUDP[i].porta);
@@ -119,7 +113,6 @@ void adicionaListaUDP(char str[],  portaUDP portasUDP[]){
 
 		if (compara == 0){
 			portasUDP[i].quantAcesso++;
-			//printf("portasUDP[i].quantAcesso: %d\n", portasUDP[i].quantAcesso);
 			printf("----------------------\n");
 			adicionou = 1;
 			break;			
@@ -139,6 +132,12 @@ void adicionaListaUDP(char str[],  portaUDP portasUDP[]){
 	}
 }
 
+int hexToDecimal(char port[4]) {
+    int decimalValue;
+    sscanf(port, "%x", &decimalValue);
+    return decimalValue;
+}
+
 void exibe5maioresTCP(portaTCP portasTCP[], int tamanho){
     for (int i = 0; i < TOTAL_PACOTES; i++){
         for (int j = i; j < TOTAL_PACOTES; j++){
@@ -154,7 +153,7 @@ void exibe5maioresTCP(portaTCP portasTCP[], int tamanho){
         }
     }
 	for(int i = 0; i < 5; i++){
-		printf("			Porta: %s Quantidade de acessos: %d \n", portasTCP[i].porta, portasTCP[i].quantAcesso);
+		printf("			Porta: %d Quantidade de acessos: %d \n", hexToDecimal(portasTCP[i].porta), portasTCP[i].quantAcesso);
 	}
 }
 
@@ -173,7 +172,7 @@ void exibe5maioresUDP(portaUDP portasUDP[], int tamanho){
         }
     }
 	for(int i = 0; i < 5; i++){
-		printf("			Porta: %s Quantidade de acessos: %d \n", portasUDP[i].porta, portasUDP[i].quantAcesso);
+		printf("			Porta: %d Quantidade de acessos: %d \n", hexToDecimal(portasUDP[i].porta), portasUDP[i].quantAcesso);
 	}
 }
 
@@ -182,11 +181,7 @@ float calculatePercentage(float value, int total) {
     return percentage;
 }
 
-int hexToDecimal(char port[4]) {
-    int decimalValue;
-    sscanf(port, "%x", &decimalValue);
-    return decimalValue;
-}
+
 
 int main(int argc,char *argv[])
 {
@@ -234,16 +229,14 @@ int main(int argc,char *argv[])
 	portaTCP portasTCP [TOTAL_PACOTES];
 	portaUDP portasUDP [TOTAL_PACOTES];
 
-	// inicializa vetor de portas TCP
+	// inicializa vetor de portas TCP e UDP
 	for(int i = 0; i < TOTAL_PACOTES; i++){
 		strcpy(portasTCP[i].porta, "0");
 		portasTCP[i].quantAcesso = 0;
-	}
-	// inicializa vetor de portas UDP
-	for(int i = 0; i < TOTAL_PACOTES; i++){
 		strcpy(portasUDP[i].porta, "0");
 		portasUDP[i].quantAcesso = 0;
 	}
+
 
 	// recepcao de pacotes
 	while (count < TOTAL_PACOTES) {
@@ -267,7 +260,6 @@ int main(int argc,char *argv[])
 		//lógica de verificação MAC
 		//se ARP
 		if (buff1[12]== 0x08 && buff1[13]==0x06){
-			//printf("ARP 21- %x \n", buff1[21]);
 			//se ARP Request
 			if(buff1[21]== 0x01){
 				arpRequest++;
@@ -282,7 +274,6 @@ int main(int argc,char *argv[])
 			char str [4];
 			char aux [4];
 			char aux2[4];
-			//printf("IPV4 23- %x \n", buff1[23]);
 			ipv4++;
 
 			// HTTPS - 443 || (01BB)
@@ -297,9 +288,7 @@ int main(int argc,char *argv[])
 				memset(aux2, 0, sizeof(aux2));		
 				tcp++;
 				sprintf(aux, "%x", buff1[34]);
-				//printf("TCP 34- %x \n", buff1[34]);
 				sprintf(aux2, "%x", buff1[35]);
-				//printf("TCP 35- %x \n", buff1[35]);
 				strcat(str,  aux);
 				strcat(str,  aux2);
 				printf("Porta TCP: %s \n", str);
@@ -313,9 +302,7 @@ int main(int argc,char *argv[])
 				memset(aux2, 0, sizeof(aux2));	
 				
 				sprintf(aux, "%x", buff1[36]);
-				//printf("UDP 36- %x \n", buff1[36]);
 				sprintf(aux2, "%x", buff1[37]);
-				//printf("UDP 37- %x \n", buff1[37]);
 				strcat(str,  aux);
 				strcat(str,  aux2);
 				printf("Porta UDP: %s \n", str);
@@ -352,7 +339,6 @@ int main(int argc,char *argv[])
 			char str [4];
 			char aux [4];
 			char aux2[4];
-			//printf("IPV6 20- %x \n", buff1[20]);
 			ipv6++;
 
 			// HTTPS - 443 || (01BB)
@@ -366,9 +352,7 @@ int main(int argc,char *argv[])
 				memset(aux2, 0, sizeof(aux2));		
 				tcp++;
 				sprintf(aux, "%x", buff1[54]);
-				//printf("TCP 54- %x \n", buff1[54]);
 				sprintf(aux2, "%x", buff1[55]);
-				//printf("TCP 55- %x \n", buff1[55]);
 				strcat(str,  aux);
 				strcat(str,  aux2);
 				printf("Porta TCP: %s \n", str);
@@ -382,9 +366,7 @@ int main(int argc,char *argv[])
 				memset(aux2, 0, sizeof(aux2));	
 				
 				sprintf(aux, "%x", buff1[56]);
-				//printf("UDP 56- %x \n", buff1[56]);
 				sprintf(aux2, "%x", buff1[57]);
-				//printf("UDP 57- %x \n", buff1[57]);
 				strcat(str,  aux);
 				strcat(str,  aux2);
 				printf("Porta UDP: %s \n", str);
@@ -414,6 +396,9 @@ int main(int argc,char *argv[])
 				}
 			}
 		}	
+
+		count++;
+		printf("--> %d de %d \n\n", count, TOTAL_PACOTES);
 	}
 
 	averagePacketSize = totalPacketsReceivedSize / TOTAL_PACOTES;
@@ -428,7 +413,7 @@ int main(int argc,char *argv[])
 
 	printf("\n\n\n");
 
-	printf("%-25s%-16d%-21d\n", "Protocolo", " Nro de pacotes", "  % do total");
+	printf("%-25s%-16s%-21s\n", "Protocolo", "Nro de pacotes", "% do total");
 	printf("%-25s%-16d%-21.2f\n", "ARP Request", arpRequest, calculatePercentage((float)arpRequest, TOTAL_PACOTES));
 	printf("%-25s%-16d%-21.2f\n", "ARP Reply", arpReply, calculatePercentage((float)arpReply, TOTAL_PACOTES));
 	printf("%-25s%-16d%-21.2f\n", "IPv4", ipv4, calculatePercentage((float)ipv4, TOTAL_PACOTES));
@@ -453,32 +438,4 @@ int main(int argc,char *argv[])
 	printf("- Lista com as 5 portas UDP mais acessadas: \n");
 	exibe5maioresUDP(portasUDP, TOTAL_PACOTES);
 
-	// printf("Geração de estatísticas: \n");
-	// printf(" - Nível de Enlace: \n");
-	// printf("	- Quantidade e porcentagem de ARP Requests e ARP Reply: \n");
-	// printf("	- ARP Requests %d 	%.2f%c \n", arpRequest, (float)(arpRequest*100)/TOTAL_PACOTES, '%');
-	// printf("	- ARP Reply %d 	%.2f%c \n\n", arpReply, (float)(arpReply*100)/TOTAL_PACOTES, '%');
-
-	// printf(" - Nível de Rede: \n");
-	// printf("	- Quantidade e porcentagem de pacotes IPv4: %d	%.2f%c \n", ipv4, (float)(ipv4*100)/TOTAL_PACOTES, '%');
-	// printf("	- Quantidade e porcentagem de pacotes ICMP: %d	%.2f%c \n", icmp, (float)(icmp*100)/TOTAL_PACOTES, '%');
-	// printf(" - Quantidade e porcentagem de ICMP Echo Request e ICMP Echo Reply:\n");
-	// printf("	- ICMP Echo Request %d 	%.2f%c  \n", icmpEchoRequest, (float)(icmpEchoRequest*100)/TOTAL_PACOTES, '%');
-	// printf("	- ICMP Echo Reply %d 	%.2f%c  \n\n", icmpEchoReply, (float)(icmpEchoReply*100)/TOTAL_PACOTES, '%');
-	// printf("	- Quantidade e porcentagem de pacotes IPv6: %d 	%.2f%c \n", ipv6, (float)(ipv6*100)/TOTAL_PACOTES, '%');
-	// printf("	- Quantidade e porcentagem de pacotes ICMPv6: %d 	%.2f%c \n", icmpv6, (float)(icmpv6*100)/TOTAL_PACOTES,'%')
-	// printf("	- Quantidade e porcentagem de ICMPv6 Echo Request e ICMPv6 Echo Reply:\n");
-	// printf("	- ICMPv6 Echo Request %d 	%.2f%c  \n", icmpv6EchoRequest, (float)(icmpv6EchoRequest*100)/TOTAL_PACOTES, '%');
-	// printf("	- ICMPv6 Echo Reply %d 	%.2f%c  \n\n", icmpv6EchoReply, (float)(icmpv6EchoReply*100)/TOTAL_PACOTES, '%');
-		
-	// printf("- Nível de Transporte: \n");
-	// printf("	- Quantidade e porcentagem de pacotes UDP: %d 	%.2f%c \n", udp, (float)(udp*100)/TOTAL_PACOTES,'%');
-	// printf("	- Quantidade e porcentagem de pacotes TCP: %d 	%.2f%c \n", tcp, (float)(tcp*100)/TOTAL_PACOTES,'%');
-
-	// printf ("\n- Nível de Aplicação: \n");
-	// printf("	- Quantidade e porcentagem de pacotes HTTP: %d  %.2f%c \n", http, (float)(http*100)/TOTAL_PACOTES,'%');
-	// printf("	- Quantidade e porcentagem de pacotes DNS: %d  %.2f%c \n", dns, (float)(dns*100)/TOTAL_PACOTES,'%');
-	// printf("	- Quantidade e porcentagem de pacotes DHCP: %d  %.2f%c \n", dhcp, (float)(dhcp*100)/TOTAL_PACOTES,'%');
-	// printf("	- Quantidade e porcentagem para outro protocolo de aplicação qualquer: %d  %.2f%c \n", https, (float)(https*100)/TOTAL_PACOTES,'%');
-		
 }
